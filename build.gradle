@@ -1,0 +1,29 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.9.22'
+    id 'application'
+}
+
+group = 'sh.okx.bankoficenia.interest'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation("org.jetbrains.kotlin:kotlin-test")
+    implementation("ch.qos.logback:logback-classic:$logback_version")
+    implementation("org.postgresql:postgresql:42.7.1")
+    implementation("com.zaxxer:HikariCP:5.0.0")
+    implementation("com.typesafe:config:1.4.3")
+    implementation("org.decimal4j:decimal4j:1.0.3")
+
+}
+
+test {
+    useJUnitPlatform()
+}
+
+application {
+    mainClassName = 'MainKt'
+}
