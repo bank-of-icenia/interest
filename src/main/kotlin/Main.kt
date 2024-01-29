@@ -30,6 +30,8 @@ fun main(args: Array<String>) {
         try {
             var start = System.nanoTime()
 
+            it.createStatement().execute("LOCK TABLE ledger")
+
             it.createStatement().execute("INSERT INTO interest_payments VALUES (DATE_TRUNC('DAY', NOW()))")
             val paymentQuery = it.createStatement().executeQuery("SELECT * FROM interest_payments ORDER BY paid DESC LIMIT 2")
             val hasFirst = paymentQuery.next()
@@ -75,7 +77,7 @@ fun main(args: Array<String>) {
             start = System.nanoTime()
 
             val interestDueStmt = it.createStatement()
-                .executeQuery("SELECT account, SUM(amount) AS amount FROM accumulated_interest WHERE DATE_TRUNC('MONTH', paid) < DATE_TRUNC('MONTH', NOW()) GROUP BY account")
+                .executeQuery("SELECT account, SUM(amount) AS amount FROM accumulated_interest WHERE DATE_TRUNC('MONTH', paid) < DATE_TRUNC('MONTH', NOW()) GROUP BY account FOR UPDATE")
             val credit = it.prepareStatement("INSERT INTO ledger (account, referenced_account, \"type\", message, amount) VALUES (?, ?, 'CREDIT', ?, CAST(? AS NUMERIC(10, 4)))")
             val debit = it.prepareStatement("INSERT INTO ledger (account, referenced_account, \"type\", message, amount) VALUES (?, ?, 'DEBIT', ?, CAST(? AS NUMERIC(10, 4)))")
             while (interestDueStmt.next()) {
