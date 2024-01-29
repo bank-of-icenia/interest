@@ -50,12 +50,14 @@ fun main(args: Array<String>) {
             }
 
             val resultSet = it.createStatement()
-                .executeQuery("SELECT " +
+                .executeQuery("WITH interest_totals AS " +
+                        "(SELECT account, COALESCE(SUM(accumulated_interest.amount), CAST(0 AS NUMERIC(10, 4))) AS amount FROM accumulated_interest GROUP BY account) " +
+                        "SELECT " +
                         "ledger.account AS account, " +
-                        "SUM(CASE WHEN \"type\"='CREDIT' THEN ledger.amount ELSE -ledger.amount END) + COALESCE(SUM(accumulated_interest.amount), CAST(0 AS NUMERIC(10, 4))) AS amount " +
+                        "SUM(CASE WHEN \"type\"='CREDIT' THEN ledger.amount ELSE -ledger.amount END) + SUM(interest_totals.amount) AS amount " +
                         "FROM ledger " +
-                        "LEFT JOIN accumulated_interest ON ledger.account = accumulated_interest.account " +
-                        "INNER JOIN accounts ON ledger.account = accounts.id AND NOT accounts.closed AND accounts.code IS NOT NULL AND accounts.name = 'Holding Account' AND accounts.account_type = 'LIABILITY'" +
+                        "LEFT JOIN interest_totals ON interest_totals.account = ledger.account " +
+                        "INNER JOIN accounts ON ledger.account = accounts.id AND NOT accounts.closed AND accounts.code IS NOT NULL AND accounts.name = 'Holding Account' AND accounts.account_type = 'LIABILITY' " +
                         "GROUP BY ledger.account")
 
             val interestStmt = it.prepareStatement("INSERT INTO accumulated_interest (account, amount) VALUES (?, CAST(? AS NUMERIC(10, 4)))")
