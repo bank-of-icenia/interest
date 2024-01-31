@@ -56,7 +56,7 @@ fun main(args: Array<String>) {
                         "(SELECT account, COALESCE(SUM(accumulated_interest.amount), CAST(0 AS NUMERIC(10, 4))) AS amount FROM accumulated_interest GROUP BY account) " +
                         "SELECT " +
                         "ledger.account AS account, " +
-                        "SUM(CASE WHEN \"type\"='CREDIT' THEN ledger.amount ELSE -ledger.amount END) + SUM(interest_totals.amount) AS amount " +
+                        "SUM(CASE WHEN \"type\"='CREDIT' THEN ledger.amount ELSE -ledger.amount END) + COALESCE(SUM(interest_totals.amount), 0) AS amount " +
                         "FROM ledger " +
                         "LEFT JOIN interest_totals ON interest_totals.account = ledger.account " +
                         "INNER JOIN accounts ON ledger.account = accounts.id AND NOT accounts.closed AND accounts.code IS NOT NULL AND accounts.name = 'Holding Account' AND accounts.account_type = 'LIABILITY' " +
@@ -76,8 +76,11 @@ fun main(args: Array<String>) {
             logger.info("Paying interest (phase 1) took " + (System.nanoTime()-start)/1000000 + "ms")
             start = System.nanoTime()
 
+            it.createStatement()
+                .execute("LOCK TABLE accumulated_interest")
+
             val interestDueStmt = it.createStatement()
-                .executeQuery("SELECT account, SUM(amount) AS amount FROM accumulated_interest WHERE DATE_TRUNC('MONTH', paid) < DATE_TRUNC('MONTH', NOW()) GROUP BY account FOR UPDATE")
+                .executeQuery("SELECT account, SUM(amount) AS amount FROM accumulated_interest WHERE DATE_TRUNC('MONTH', paid) < DATE_TRUNC('MONTH', NOW()) GROUP BY account")
             val credit = it.prepareStatement("INSERT INTO ledger (account, referenced_account, \"type\", message, amount) VALUES (?, ?, 'CREDIT', ?, CAST(? AS NUMERIC(10, 4)))")
             val debit = it.prepareStatement("INSERT INTO ledger (account, referenced_account, \"type\", message, amount) VALUES (?, ?, 'DEBIT', ?, CAST(? AS NUMERIC(10, 4)))")
             while (interestDueStmt.next()) {
